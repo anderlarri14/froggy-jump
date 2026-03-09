@@ -1,6 +1,8 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include "game_level.h"
+
 enum GameState {
     GAME_ACTIVE,
     GAME_MENU,
@@ -16,6 +18,9 @@ public:
     Game(unsigned int width, unsigned int height);
     ~Game();
     void Init();
+
+    std::vector<GameLevel> Levels;
+    unsigned int CurrentLevel;
 
     // Game loop
     void ProcessInput(float dt);

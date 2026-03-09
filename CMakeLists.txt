@@ -23,9 +23,9 @@ add_executable(${PROJECT_NAME}
 )
 
 # --- Resources config (Symlinks) ---
-
 set(SHADERS_SRC "${CMAKE_CURRENT_SOURCE_DIR}/data/shaders")
 set(TEXTURES_SRC "${CMAKE_CURRENT_SOURCE_DIR}/data/textures")
+set(LEVELS_SRC "${CMAKE_CURRENT_SOURCE_DIR}/data/levels")
 
 set(DATA_OUTPUT_DIR "$<TARGET_FILE_DIR:${PROJECT_NAME}>/data")
 
@@ -34,9 +34,11 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     
     COMMAND ${CMAKE_COMMAND} -E rm -rf "${DATA_OUTPUT_DIR}/shaders"
     COMMAND ${CMAKE_COMMAND} -E rm -rf "${DATA_OUTPUT_DIR}/textures"
+    COMMAND ${CMAKE_COMMAND} -E rm -rf "${DATA_OUTPUT_DIR}/levels"
     
     COMMAND ${CMAKE_COMMAND} -E create_symlink "${SHADERS_SRC}" "${DATA_OUTPUT_DIR}/shaders"
     COMMAND ${CMAKE_COMMAND} -E create_symlink "${TEXTURES_SRC}" "${DATA_OUTPUT_DIR}/textures"
+    COMMAND ${CMAKE_COMMAND} -E create_symlink "${LEVELS_SRC}" "${DATA_OUTPUT_DIR}/levels"
     
     COMMENT "Creating symlinks for output data"
 )
