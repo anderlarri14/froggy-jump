@@ -2,8 +2,16 @@
 #include "resource_manager.h"
 #include "sprite_renderer.h"
 #include "game_level.h"
+#include "collisions.h"
+#include "player_object.h"
+
+#include <iostream>
 
 SpriteRenderer  *Renderer;
+PlayerObject *Player;
+
+float MAX_RUN_SPEED = 400.0f; 
+float MAX_FALL_SPEED = 800.0f;
 
 Game::Game(unsigned int width, unsigned int height) 
     : State(GAME_ACTIVE), Keys(), Width(width), Height(height)
@@ -14,6 +22,7 @@ Game::Game(unsigned int width, unsigned int height)
 Game::~Game()
 {
     delete Renderer;
+    delete Player;
 }
 
 void Game::Init()
@@ -40,19 +49,157 @@ void Game::Init()
     this->Levels.push_back(one);
     this->Levels.push_back(two);
     this->Levels.push_back(three);
-    this->CurrentLevel = 2;
+    this->CurrentLevel = 0;
 
+    float playerSpeed = 1750.0f;
+    float jumpHeight = 600.0f;
+
+    Player = new PlayerObject(
+        this->Levels[this->CurrentLevel].PlayerData.Position,
+        this->Levels[this->CurrentLevel].PlayerData.Size,
+        this->Levels[this->CurrentLevel].PlayerData.Sprite,
+        glm::vec2(0.0f, 0.0f),
+        playerSpeed,
+        jumpHeight
+    );
+    std::cout << "PlayerData is: (" << Player->Position.x <<","<< Player->Position.y <<") (" << Player->Size.x <<","<< Player->Size.y <<") "<< Player->Sprite.ID << std::endl;
 
 }
 
 void Game::Update(float dt)
 {
+    // Gravity
+    this->SimulatePhysics(dt);
+
+    // Collisions
+    this->Collisions(dt);
+}
+
+void Game::SimulatePhysics(float dt)
+{
+    float gravity = 980.0f;
+    float friction = 10.0f;
+    float drag = 8.0f;
+
+    // 1. Aplicar Gravedad a la velocidad
+    Player->Velocity.y += gravity * dt;
+
+
+    if (Player->IsOnGround)
+        Player->Velocity.x -= Player->Velocity.x * friction * dt;
+    else
+        Player->Velocity.x -= Player->Velocity.x * drag * dt;
+
+    Player->Position += Player->Velocity * dt;
+
+    Player->IsOnGround = false;
+}
+
+void Game::Collisions(float dt)
+{
+    for (GameObject &tile : this->Levels[this->CurrentLevel].Tiles)
+    {
+        if (checkCollisionAABB(*Player, tile))
+        {
+            float overlapX = (Player->Size.x / 2 + tile.Size.x / 2) - std::abs((Player->Position.x + Player->Size.x / 2) - (tile.Position.x + tile.Size.x / 2));
+            float overlapY = (Player->Size.y / 2 + tile.Size.y / 2) - std::abs((Player->Position.y + Player->Size.y / 2) - (tile.Position.y + tile.Size.y / 2));
+            
+            if (tile.TileType == APPLE_TYPE)
+            {
+                std::cout << "Collision with apple :D" << std::endl;
+            }
+            
+
+            if (overlapX < overlapY)
+            {
+                if (Player->Position.x < tile.Position.x)
+                {
+                    Player->Position.x -= overlapX; // Left colision
+                }
+                else
+                {
+                    Player->Position.x += overlapX; // Right colision
+                }
+                Player->Velocity.x = 0;
+            }
+            else
+            {
+                if (Player->Position.y < tile.Position.y)
+                {
+                    Player->Position.y -= overlapY; // Up colision
+                    Player->IsOnGround = true;
+                }
+                else
+                {
+                    Player->Position.y += overlapY; // Down colision
+                }
+                Player->Velocity.y = 0;
+            }
+        }
+    }
+
+    // Out of bounds collisions
+    if (Player->Position.x < 0.0f)
+    {
+        Player->Position.x = 0.0f;
+        Player->Velocity.x = 0.0f;
+    } 
+    else if (Player->Position.x + Player->Size.x > this->Width)
+    {
+        Player->Position.x = this->Width - Player->Size.x;
+        Player->Velocity.x = 0.0f;
+    }
+    else if (Player->Position.y < 0.0f)
+    {
+        Player->Position.y = 0.0f;
+        Player->Velocity.y = 0.0f;
+    }
+    else
+    {
+        /* FALL DEATH LOGIC */
+    }
     
 }
 
 void Game::ProcessInput(float dt)
 {
-   
+   if (this->State == GAME_ACTIVE)
+    {
+        // Player movement
+        if (this->Keys[GLFW_KEY_A])
+        {
+            Player->Velocity.x -= Player->Speed * dt;
+        }
+        if (this->Keys[GLFW_KEY_D])
+        {
+            Player->Velocity.x += Player->Speed * dt;
+        }
+        if (this->Keys[GLFW_KEY_W] && Player->IsOnGround)
+        {
+            Player->Velocity.y = -Player->JumpHeight;
+        }
+
+
+
+        // Debug tools
+        if (this->Keys[GLFW_KEY_KP_1])
+        {
+            this->CurrentLevel = 0;
+        }
+        if (this->Keys[GLFW_KEY_KP_2])
+        {
+            this->CurrentLevel = 1;
+        }
+        if (this->Keys[GLFW_KEY_KP_3])
+        {
+            this->CurrentLevel = 2;
+        }
+        if (this->Keys[GLFW_KEY_KP_0])
+        {
+            Player->Position = this->Levels[this->CurrentLevel].PlayerData.Position;
+            Player->Velocity = glm::vec2(0.0f, 0.0f);
+        }
+    }
 }
 
 void Game::Render()
@@ -65,6 +212,8 @@ void Game::Render()
     if (this->State == GAME_ACTIVE)
     {
         this->Levels[this->CurrentLevel].Draw(*Renderer);
+
+        Player->Draw(*Renderer);
     }
     
 }

@@ -10,7 +10,7 @@
 void GameLevel::Load(const char *file, unsigned int levelWidth, unsigned int levelHeight)
 {
     this->Tiles.clear();
-    std::cout << "Loading level csv..." << std::endl;
+    std::cout << "Loading level: " << file << std::endl;
     std::ifstream levelFile(file);
     std::string line;
     std::vector<std::vector<int>> tileData;
@@ -62,14 +62,15 @@ void GameLevel::Init(const std::vector<std::vector<int>> &tileData, unsigned int
                     break;
                 case FROG_TYPE:
                     textureName = "frog";
-                    break;
+                    this->PlayerData = GameObject(pos, size, ResourceManager::GetTexture(textureName), tileData[y][x]);
+                    continue;
                 case APPLE_TYPE:
                     textureName = "apple";
                     break;
                 default:
                     continue;
             }
-            this->Tiles.push_back(GameObject(pos, size, ResourceManager::GetTexture(textureName)));
+            this->Tiles.push_back(GameObject(pos, size, ResourceManager::GetTexture(textureName), tileData[y][x]));
         }
     }
 }

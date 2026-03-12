@@ -1,6 +1,9 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
 #include "game_level.h"
 
 enum GameState {
@@ -25,6 +28,8 @@ public:
     // Game loop
     void ProcessInput(float dt);
     void Update(float dt);
+    void SimulatePhysics(float dt);
+    void Collisions(float dt);
     void Render();
 
 };

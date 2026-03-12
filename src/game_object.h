@@ -24,7 +24,7 @@ public:
     Texture2D Sprite;
 
     GameObject();
-    GameObject(glm::vec2 pos, glm::vec2 size, Texture2D sprite);
+    GameObject(glm::vec2 pos, glm::vec2 size, Texture2D sprite, int tileType);
     void Draw(SpriteRenderer &renderer);
 
 private:
