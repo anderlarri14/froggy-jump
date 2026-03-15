@@ -20,6 +20,7 @@ class GameObject
 public:
     glm::vec2 Position, Size;
     int TileType;
+    bool IsCollected;
 
     Texture2D Sprite;
 

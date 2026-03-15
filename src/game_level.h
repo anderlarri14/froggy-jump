@@ -12,7 +12,8 @@ class GameLevel
 {
 public:
     std::vector<GameObject> Tiles;
-    GameObject PlayerData; 
+    GameObject PlayerData;
+    std::vector<GameObject> Collectables;
     
     GameLevel() {};
     void Load(const char *file, unsigned int levelWidth, unsigned int levelHeight);

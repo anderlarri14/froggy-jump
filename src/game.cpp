@@ -10,8 +10,6 @@
 SpriteRenderer  *Renderer;
 PlayerObject *Player;
 
-float MAX_RUN_SPEED = 400.0f; 
-float MAX_FALL_SPEED = 800.0f;
 
 Game::Game(unsigned int width, unsigned int height) 
     : State(GAME_ACTIVE), Keys(), Width(width), Height(height)
@@ -36,6 +34,8 @@ void Game::Init()
     Renderer = new SpriteRenderer(ResourceManager::GetShader("frog"));
 
     ResourceManager::LoadTexture("data/textures/background.jpg", false, "background");
+    ResourceManager::LoadTexture("data/textures/gameWon.png", true, "gameWon");
+    ResourceManager::LoadTexture("data/textures/gameLost.png", true, "gameLost");
     ResourceManager::LoadTexture("data/textures/frog.png", true, "frog");
     ResourceManager::LoadTexture("data/textures/dirt.png", true, "dirt");
     ResourceManager::LoadTexture("data/textures/grass.png", true, "grass");
@@ -73,6 +73,9 @@ void Game::Update(float dt)
 
     // Collisions
     this->Collisions(dt);
+
+    // Check level beaten and load next
+    this->LevelCompleted();
 }
 
 void Game::SimulatePhysics(float dt)
@@ -97,18 +100,13 @@ void Game::SimulatePhysics(float dt)
 
 void Game::Collisions(float dt)
 {
+    // Terrain collisions
     for (GameObject &tile : this->Levels[this->CurrentLevel].Tiles)
     {
         if (checkCollisionAABB(*Player, tile))
         {
             float overlapX = (Player->Size.x / 2 + tile.Size.x / 2) - std::abs((Player->Position.x + Player->Size.x / 2) - (tile.Position.x + tile.Size.x / 2));
             float overlapY = (Player->Size.y / 2 + tile.Size.y / 2) - std::abs((Player->Position.y + Player->Size.y / 2) - (tile.Position.y + tile.Size.y / 2));
-            
-            if (tile.TileType == APPLE_TYPE)
-            {
-                std::cout << "Collision with apple :D" << std::endl;
-            }
-            
 
             if (overlapX < overlapY)
             {
@@ -138,6 +136,19 @@ void Game::Collisions(float dt)
         }
     }
 
+    // Collectable collisions
+    for (GameObject &collectable : this->Levels[this->CurrentLevel].Collectables)
+    {
+        if (collectable.IsCollected)
+            continue;
+
+        if (checkCollisionAABB(*Player, collectable))
+        {
+            collectable.IsCollected = true;
+            std::cout << "Collision with apple :D" << std::endl;
+        }
+    }
+
     // Out of bounds collisions
     if (Player->Position.x < 0.0f)
     {
@@ -154,9 +165,15 @@ void Game::Collisions(float dt)
         Player->Position.y = 0.0f;
         Player->Velocity.y = 0.0f;
     }
-    else
+    else if (Player->Position.y > this->Height)
     {
         /* FALL DEATH LOGIC */
+        if (Player->Lives == 0)
+            this->State = GAME_OVER;
+        
+        
+        Player->Death();
+        Player->Reset(this->Levels[this->CurrentLevel].PlayerData.Position);
     }
     
 }
@@ -204,16 +221,52 @@ void Game::ProcessInput(float dt)
 
 void Game::Render()
 {
-    Renderer->DrawSprite(
-        ResourceManager::GetTexture("background"),
-        glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height)
-    );
-
-    if (this->State == GAME_ACTIVE)
+    switch (this->State)
     {
+    case GAME_ACTIVE:
+        Renderer->DrawSprite(
+            ResourceManager::GetTexture("background"),
+            glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height)
+        );
+
         this->Levels[this->CurrentLevel].Draw(*Renderer);
 
         Player->Draw(*Renderer);
+        break;
+
+    case GAME_WIN:
+        Renderer->DrawSprite(
+            ResourceManager::GetTexture("gameWon"),
+            glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height)
+        );
+        break;
+    case GAME_OVER:
+        Renderer->DrawSprite(
+            ResourceManager::GetTexture("gameLost"),
+            glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height)
+        );
+        break;
+    default:
+        break;
     }
+}
+
+void Game::LevelCompleted()
+{
+    if (this->State == GAME_WIN)
+        return;
     
+    if (this->Levels[this->CurrentLevel].IsCompleted())
+    {
+        if (this->CurrentLevel < this->Levels.size() - 1)
+        {
+            this->CurrentLevel++;
+            Player->Reset(this->Levels[this->CurrentLevel].PlayerData.Position);
+        }
+        else
+        {
+            this->State = GAME_WIN;
+        }
+        
+    }
 }

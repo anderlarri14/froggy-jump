@@ -9,7 +9,8 @@
 enum GameState {
     GAME_ACTIVE,
     GAME_MENU,
-    GAME_WIN
+    GAME_WIN,
+    GAME_OVER
 };
 
 class Game
@@ -31,6 +32,7 @@ public:
     void SimulatePhysics(float dt);
     void Collisions(float dt);
     void Render();
+    void LevelCompleted();
 
 };
 #endif

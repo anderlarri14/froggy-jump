@@ -66,7 +66,8 @@ void GameLevel::Init(const std::vector<std::vector<int>> &tileData, unsigned int
                     continue;
                 case APPLE_TYPE:
                     textureName = "apple";
-                    break;
+                    this->Collectables.push_back(GameObject(pos, size, ResourceManager::GetTexture(textureName), tileData[y][x]));
+                    continue;
                 default:
                     continue;
             }
@@ -81,5 +82,20 @@ void GameLevel::Draw(SpriteRenderer &renderer)
     {
         tile.Draw(renderer);
     }
-    
+
+    for (GameObject &collectable : this->Collectables)
+    {
+        if (!collectable.IsCollected)
+            collectable.Draw(renderer);
+    }
+}
+
+bool GameLevel::IsCompleted()
+{
+    for (GameObject &collectable : this->Collectables)
+    {
+        if (!collectable.IsCollected)
+            return false;
+    }
+    return true;
 }
