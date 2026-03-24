@@ -4,15 +4,17 @@
 #include "game_level.h"
 #include "collisions.h"
 #include "player_object.h"
+#include "sound_engine.h"
 
 #include <iostream>
 
 SpriteRenderer  *Renderer;
+SoundEngine Sound;
 PlayerObject *Player;
 
 
 Game::Game(unsigned int width, unsigned int height) 
-    : State(GAME_ACTIVE), Keys(), Width(width), Height(height)
+    : State(GAME_MENU), Keys(), Width(width), Height(height)
 { 
 
 }
@@ -34,6 +36,7 @@ void Game::Init()
     Renderer = new SpriteRenderer(ResourceManager::GetShader("frog"));
 
     ResourceManager::LoadTexture("data/textures/background.jpg", false, "background");
+    ResourceManager::LoadTexture("data/textures/menu.png", true, "menu");
     ResourceManager::LoadTexture("data/textures/gameWon.png", true, "gameWon");
     ResourceManager::LoadTexture("data/textures/gameLost.png", true, "gameLost");
     ResourceManager::LoadTexture("data/textures/frog.png", true, "frog");
@@ -50,6 +53,14 @@ void Game::Init()
     this->Levels.push_back(two);
     this->Levels.push_back(three);
     this->CurrentLevel = 0;
+
+    float volume = 0.5f;
+    Sound.Init(volume);
+    Sound.LoadSound("data/sound/music/EVRetro-MusicLoop.wav", true);
+    Sound.LoadSound("data/sound/sfx/jump.wav");
+    Sound.LoadSound("data/sound/sfx/acquire.wav");
+    Sound.LoadSound("data/sound/sfx/fail.wav");
+    Sound.StartSound(MUSIC);
 
     float playerSpeed = 1750.0f;
     float jumpHeight = 600.0f;
@@ -68,6 +79,9 @@ void Game::Init()
 
 void Game::Update(float dt)
 {
+    if (this->State != GAME_ACTIVE)
+        return;
+    
     // Gravity
     this->SimulatePhysics(dt);
 
@@ -146,6 +160,7 @@ void Game::Collisions(float dt)
         {
             collectable.IsCollected = true;
             std::cout << "Collision with apple :D" << std::endl;
+            Sound.StartSound(SFX_ACQUIRE);
         }
     }
 
@@ -174,13 +189,14 @@ void Game::Collisions(float dt)
         
         Player->Death();
         Player->Reset(this->Levels[this->CurrentLevel].PlayerData.Position);
+        Sound.StartSound(SFX_FAIL);
     }
     
 }
 
 void Game::ProcessInput(float dt)
 {
-   if (this->State == GAME_ACTIVE)
+    if (this->State == GAME_ACTIVE)
     {
         // Player movement
         if (this->Keys[GLFW_KEY_A])
@@ -194,6 +210,7 @@ void Game::ProcessInput(float dt)
         if (this->Keys[GLFW_KEY_W] && Player->IsOnGround)
         {
             Player->Velocity.y = -Player->JumpHeight;
+            Sound.StartSound(SFX_JUMP);
         }
 
 
@@ -217,37 +234,53 @@ void Game::ProcessInput(float dt)
             Player->Velocity = glm::vec2(0.0f, 0.0f);
         }
     }
+
+    if (this->State == GAME_MENU)
+    {
+        if (this->Keys[GLFW_KEY_ENTER])
+        {
+            this->State = GAME_ACTIVE;
+        }
+    }
+    
 }
 
 void Game::Render()
 {
     switch (this->State)
     {
-    case GAME_ACTIVE:
-        Renderer->DrawSprite(
-            ResourceManager::GetTexture("background"),
-            glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height)
-        );
+        case GAME_MENU:
+            Renderer->DrawSprite(
+                ResourceManager::GetTexture("menu"),
+                glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height)
+            );
+            break;
 
-        this->Levels[this->CurrentLevel].Draw(*Renderer);
+        case GAME_ACTIVE:
+            Renderer->DrawSprite(
+                ResourceManager::GetTexture("background"),
+                glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height)
+            );
+            this->Levels[this->CurrentLevel].Draw(*Renderer);
+            Player->Draw(*Renderer);
+            break;
 
-        Player->Draw(*Renderer);
-        break;
+        case GAME_WIN:
+            Renderer->DrawSprite(
+                ResourceManager::GetTexture("gameWon"),
+                glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height)
+            );
+            break;
 
-    case GAME_WIN:
-        Renderer->DrawSprite(
-            ResourceManager::GetTexture("gameWon"),
-            glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height)
-        );
-        break;
-    case GAME_OVER:
-        Renderer->DrawSprite(
-            ResourceManager::GetTexture("gameLost"),
-            glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height)
-        );
-        break;
-    default:
-        break;
+        case GAME_OVER:
+            Renderer->DrawSprite(
+                ResourceManager::GetTexture("gameLost"),
+                glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height)
+            );
+            break;
+
+        default:
+            break;
     }
 }
 

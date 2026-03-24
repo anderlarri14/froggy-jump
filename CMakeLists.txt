@@ -8,6 +8,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(glad STATIC "external/glad/src/glad.c")
 target_include_directories(glad PUBLIC "external/glad/include")
 
+add_library(miniaudio STATIC "external/miniaudio/miniaudio_impl.cpp")
+target_include_directories(miniaudio PUBLIC "external/miniaudio")
+
 set(GLFW_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/external/GLFW/glfw3.lib")
 set(GLFW_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/GLFW/include")
 set(GLM_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/")
@@ -23,22 +26,12 @@ add_executable(${PROJECT_NAME}
 )
 
 # --- Resources config (Symlinks) ---
-set(SHADERS_SRC "${CMAKE_CURRENT_SOURCE_DIR}/data/shaders")
-set(TEXTURES_SRC "${CMAKE_CURRENT_SOURCE_DIR}/data/textures")
-set(LEVELS_SRC "${CMAKE_CURRENT_SOURCE_DIR}/data/levels")
+set(DATA_SRC "${CMAKE_CURRENT_SOURCE_DIR}/data")
 
 set(DATA_OUTPUT_DIR "$<TARGET_FILE_DIR:${PROJECT_NAME}>/data")
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${DATA_OUTPUT_DIR}"
-    
-    COMMAND ${CMAKE_COMMAND} -E rm -rf "${DATA_OUTPUT_DIR}/shaders"
-    COMMAND ${CMAKE_COMMAND} -E rm -rf "${DATA_OUTPUT_DIR}/textures"
-    COMMAND ${CMAKE_COMMAND} -E rm -rf "${DATA_OUTPUT_DIR}/levels"
-    
-    COMMAND ${CMAKE_COMMAND} -E create_symlink "${SHADERS_SRC}" "${DATA_OUTPUT_DIR}/shaders"
-    COMMAND ${CMAKE_COMMAND} -E create_symlink "${TEXTURES_SRC}" "${DATA_OUTPUT_DIR}/textures"
-    COMMAND ${CMAKE_COMMAND} -E create_symlink "${LEVELS_SRC}" "${DATA_OUTPUT_DIR}/levels"
+    COMMAND ${CMAKE_COMMAND} -E create_symlink "${DATA_SRC}" "${DATA_OUTPUT_DIR}"
     
     COMMENT "Creating symlinks for output data"
 )
@@ -53,6 +46,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME}
     glad
+    miniaudio
     "${GLFW_LIBRARY}"
     opengl32
+    winmm
 )

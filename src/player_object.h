@@ -12,7 +12,7 @@ public:
     glm::vec2 Velocity;
     bool IsOnGround;
     float Speed;
-    int Lives = 3;
+    int Lives;
     
     PlayerObject();
     PlayerObject(glm::vec2 pos, glm::vec2 size, Texture2D sprite, glm::vec2 velocity, float playerSpeed, float jumpHeight);
