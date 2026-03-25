@@ -5,11 +5,13 @@
 #include "collisions.h"
 #include "player_object.h"
 #include "sound_engine.h"
+#include "text.h"
 
 #include <iostream>
 
 SpriteRenderer  *Renderer;
 SoundEngine Sound;
+Text *UIText;
 PlayerObject *Player;
 
 
@@ -22,6 +24,7 @@ Game::Game(unsigned int width, unsigned int height)
 Game::~Game()
 {
     delete Renderer;
+    delete UIText;
     delete Player;
 }
 
@@ -61,6 +64,8 @@ void Game::Init()
     Sound.LoadSound("data/sound/sfx/acquire.wav");
     Sound.LoadSound("data/sound/sfx/fail.wav");
     Sound.StartSound(MUSIC);
+
+    UIText = new Text();
 
     float playerSpeed = 1750.0f;
     float jumpHeight = 600.0f;
@@ -183,13 +188,15 @@ void Game::Collisions(float dt)
     else if (Player->Position.y > this->Height)
     {
         /* FALL DEATH LOGIC */
-        if (Player->Lives == 0)
-            this->State = GAME_OVER;
-        
-        
         Player->Death();
-        Player->Reset(this->Levels[this->CurrentLevel].PlayerData.Position);
         Sound.StartSound(SFX_FAIL);
+
+        if (Player->Lives <= 0)
+        {
+            this->State = GAME_OVER;
+            return;
+        }
+        Player->Reset(this->Levels[this->CurrentLevel].PlayerData.Position);
     }
     
 }
@@ -257,14 +264,26 @@ void Game::Render()
             break;
 
         case GAME_ACTIVE:
+        {
+
             Renderer->DrawSprite(
                 ResourceManager::GetTexture("background"),
                 glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height)
             );
             this->Levels[this->CurrentLevel].Draw(*Renderer);
             Player->Draw(*Renderer);
+            
+            std::string LivesStr = "Player Lives: " + std::to_string(Player->Lives);
+            glm::vec2 textPos =  glm::vec2(5.0f, 5.0f);
+            glm::vec4 textColor = glm::vec4(1.0f, 1.0f, 1.0f, 4.0f);
+            float size = 1.75f;
+            UIText->Draw(LivesStr.c_str(), textPos, textColor, size);
+            LivesStr = "Level: " + std::to_string(this->CurrentLevel + 1);
+            textPos =  glm::vec2(5.0f, 40.0f);
+            UIText->Draw(LivesStr.c_str(), textPos, textColor, size);
+            
             break;
-
+        }
         case GAME_WIN:
             Renderer->DrawSprite(
                 ResourceManager::GetTexture("gameWon"),
@@ -287,7 +306,10 @@ void Game::Render()
 void Game::LevelCompleted()
 {
     if (this->State == GAME_WIN)
+    {
+        UIText->Clear();
         return;
+    }
     
     if (this->Levels[this->CurrentLevel].IsCompleted())
     {

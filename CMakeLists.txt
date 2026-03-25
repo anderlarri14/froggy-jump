@@ -5,16 +5,17 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # --- External libraries ---
+set(GLFW_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/external/GLFW/glfw3.lib")
+set(GLFW_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/GLFW/include")
+set(GLM_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/")
+set(STB_IMAGE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/stb_image")
+set(GLTEXT_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/gltext")
+
 add_library(glad STATIC "external/glad/src/glad.c")
 target_include_directories(glad PUBLIC "external/glad/include")
 
 add_library(miniaudio STATIC "external/miniaudio/miniaudio_impl.cpp")
 target_include_directories(miniaudio PUBLIC "external/miniaudio")
-
-set(GLFW_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/external/GLFW/glfw3.lib")
-set(GLFW_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/GLFW/include")
-set(GLM_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/")
-set(STB_IMAGE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/stb_image")
 
 # --- Sources ---
 file(GLOB_RECURSE MY_SOURCE_FILES "src/*.cpp")
@@ -42,6 +43,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     "${GLFW_INCLUDE_DIR}"
     "${GLM_INCLUDE_DIR}"
     "${STB_IMAGE_INCLUDE_DIR}"
+    "${GLTEXT_INCLUDE_DIR}"
 )
 
 target_link_libraries(${PROJECT_NAME}
