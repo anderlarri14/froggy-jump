@@ -23,13 +23,15 @@ public:
     bool IsCollected;
 
     Texture2D Sprite;
+    glm::vec2 CollisionOffset, CollisionSize;
+    glm::vec2 TileSizeUV;
 
     GameObject();
     GameObject(glm::vec2 pos, glm::vec2 size, Texture2D sprite, int tileType);
     void Draw(SpriteRenderer &renderer);
 
 private:
-
+    glm::vec2 GetUVOffsetFromTileType();
 
 };
 #endif 

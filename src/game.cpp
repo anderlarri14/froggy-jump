@@ -42,10 +42,7 @@ void Game::Init()
     ResourceManager::LoadTexture("data/textures/menu.png", true, "menu");
     ResourceManager::LoadTexture("data/textures/gameWon.png", true, "gameWon");
     ResourceManager::LoadTexture("data/textures/gameLost.png", true, "gameLost");
-    ResourceManager::LoadTexture("data/textures/frog.png", true, "frog");
-    ResourceManager::LoadTexture("data/textures/dirt.png", true, "dirt");
-    ResourceManager::LoadTexture("data/textures/grass.png", true, "grass");
-    ResourceManager::LoadTexture("data/textures/apple.png", true, "apple");
+    ResourceManager::LoadTexture("data/textures/froggyjump_tileset.png", true, "froggyjump_tileset");
 
     GameLevel one, two, three; 
     one.Load("data/levels/level1.csv", this->Width, this->Height);
@@ -78,6 +75,8 @@ void Game::Init()
         playerSpeed,
         jumpHeight
     );
+    Player->CollisionSize = this->Levels[this->CurrentLevel].PlayerData.CollisionSize;
+    Player->CollisionOffset = this->Levels[this->CurrentLevel].PlayerData.CollisionOffset;
     std::cout << "PlayerData is: (" << Player->Position.x <<","<< Player->Position.y <<") (" << Player->Size.x <<","<< Player->Size.y <<") "<< Player->Sprite.ID << std::endl;
 
 }
@@ -119,17 +118,27 @@ void Game::SimulatePhysics(float dt)
 
 void Game::Collisions(float dt)
 {
+    // Player collision data
+    glm::vec2 playerCollision = Player->Position + Player->CollisionOffset;
+    glm::vec2 playerHalf   = Player->CollisionSize * 0.5f;
+    glm::vec2 playerCenter = playerCollision + playerHalf;
+
     // Terrain collisions
     for (GameObject &tile : this->Levels[this->CurrentLevel].Tiles)
     {
         if (checkCollisionAABB(*Player, tile))
         {
-            float overlapX = (Player->Size.x / 2 + tile.Size.x / 2) - std::abs((Player->Position.x + Player->Size.x / 2) - (tile.Position.x + tile.Size.x / 2));
-            float overlapY = (Player->Size.y / 2 + tile.Size.y / 2) - std::abs((Player->Position.y + Player->Size.y / 2) - (tile.Position.y + tile.Size.y / 2));
+            // Tile collision data
+            glm::vec2 tileCollision = tile.Position + tile.CollisionOffset;
+            glm::vec2 tileHalf   = tile.CollisionSize * 0.5f;
+            glm::vec2 tileCenter = tileCollision + tileHalf;
+
+            float overlapX = (playerHalf.x + tileHalf.x) - std::abs(playerCenter.x - tileCenter.x);
+            float overlapY = (playerHalf.y + tileHalf.y) - std::abs(playerCenter.y - tileCenter.y);
 
             if (overlapX < overlapY)
             {
-                if (Player->Position.x < tile.Position.x)
+                if (playerCenter.x < tileCenter.x)
                 {
                     Player->Position.x -= overlapX; // Left colision
                 }
@@ -141,7 +150,7 @@ void Game::Collisions(float dt)
             }
             else
             {
-                if (Player->Position.y < tile.Position.y)
+                if (playerCenter.y < tileCenter.y)
                 {
                     Player->Position.y -= overlapY; // Up colision
                     Player->IsOnGround = true;
@@ -152,40 +161,39 @@ void Game::Collisions(float dt)
                 }
                 Player->Velocity.y = 0;
             }
+            playerCenter = (Player->Position + Player->CollisionOffset) + (Player->CollisionSize * 0.5f);
         }
     }
 
     // Collectable collisions
     for (GameObject &collectable : this->Levels[this->CurrentLevel].Collectables)
     {
-        if (collectable.IsCollected)
-            continue;
-
-        if (checkCollisionAABB(*Player, collectable))
+        if (!collectable.IsCollected && checkCollisionAABB(*Player, collectable))
         {
             collectable.IsCollected = true;
-            std::cout << "Collision with apple :D" << std::endl;
             Sound.StartSound(SFX_ACQUIRE);
         }
     }
 
     // Out of bounds collisions
-    if (Player->Position.x < 0.0f)
+    if (Player->Position.x + Player->CollisionOffset.x < 0.0f)
     {
-        Player->Position.x = 0.0f;
+        Player->Position.x = -Player->CollisionOffset.x;
         Player->Velocity.x = 0.0f;
     } 
     else if (Player->Position.x + Player->Size.x > this->Width)
     {
-        Player->Position.x = this->Width - Player->Size.x;
+        Player->Position.x = this->Width - Player->CollisionOffset.x - Player->CollisionSize.x;
         Player->Velocity.x = 0.0f;
     }
-    else if (Player->Position.y < 0.0f)
+    
+    if (Player->Position.y + Player->CollisionOffset.y < 0.0f)
     {
-        Player->Position.y = 0.0f;
+        Player->Position.y = -Player->CollisionOffset.y;
         Player->Velocity.y = 0.0f;
     }
-    else if (Player->Position.y > this->Height)
+    
+    if (Player->Position.y + Player->CollisionOffset.y > this->Height)
     {
         /* FALL DEATH LOGIC */
         Player->Death();
@@ -194,9 +202,11 @@ void Game::Collisions(float dt)
         if (Player->Lives <= 0)
         {
             this->State = GAME_OVER;
-            return;
         }
-        Player->Reset(this->Levels[this->CurrentLevel].PlayerData.Position);
+        else
+        {
+            Player->Reset(this->Levels[this->CurrentLevel].PlayerData.Position);
+        }  
     }
     
 }
@@ -273,6 +283,7 @@ void Game::Render()
             this->Levels[this->CurrentLevel].Draw(*Renderer);
             Player->Draw(*Renderer);
             
+            // Draw UI text
             std::string LivesStr = "Player Lives: " + std::to_string(Player->Lives);
             glm::vec2 textPos =  glm::vec2(5.0f, 5.0f);
             glm::vec4 textColor = glm::vec4(1.0f, 1.0f, 1.0f, 4.0f);

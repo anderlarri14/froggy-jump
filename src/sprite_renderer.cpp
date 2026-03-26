@@ -39,8 +39,7 @@ void SpriteRenderer::initRenderData()
 
 }
 
-void SpriteRenderer::DrawSprite(Texture2D &texture, glm::vec2 position, 
-  glm::vec2 size, float rotate, glm::vec3 color)
+void SpriteRenderer::DrawSprite(Texture2D &texture, glm::vec2 position, glm::vec2 size, float rotate, glm::vec3 color, glm::vec2 texCoords, glm::vec2 texOffset)
 {
     this->shader.Use();
     glm::mat4 model = glm::mat4(1.0f);
@@ -54,6 +53,8 @@ void SpriteRenderer::DrawSprite(Texture2D &texture, glm::vec2 position,
   
     this->shader.SetMatrix4("model", model);
     this->shader.SetVector3f("spriteColor", color);
+    this->shader.SetVector2f("texCoords", texCoords);
+    this->shader.SetVector2f("texOffset", texOffset);
   
     glActiveTexture(GL_TEXTURE0);
     texture.Bind();

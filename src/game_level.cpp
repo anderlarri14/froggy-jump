@@ -42,34 +42,33 @@ void GameLevel::Init(const std::vector<std::vector<int>> &tileData, unsigned int
     float tileHeight   = levelHeight / yTiles;
     float tileWidth    = levelWidth / xTiles;
 
-    std::string textureName;
+    std::string textureName = "froggyjump_tileset";
     for (unsigned int y = 0; y < yTiles; y++)
     {
         for (unsigned int x = 0; x < xTiles; x++)
         {
             glm::vec2 pos(x * tileWidth, y * tileHeight);
-            glm::vec2 size(tileHeight, tileWidth);
+            glm::vec2 size(tileWidth, tileHeight);
             
             switch(tileData[y][x]) 
             {
                 case AIR_TYPE:
                     continue;
-                case DIRT_TYPE:
-                    textureName = "dirt";
-                    break;
-                case GRASS_TYPE:
-                    textureName = "grass";
-                    break;
                 case FROG_TYPE:
-                    textureName = "frog";
                     this->PlayerData = GameObject(pos, size, ResourceManager::GetTexture(textureName), tileData[y][x]);
+                    this->PlayerData.CollisionSize = glm::vec2(size.x * 0.6f, size.y * 0.6f);
+                    this->PlayerData.CollisionOffset = glm::vec2(size.x * 0.2f, size.y * 0.4f);
                     continue;
                 case APPLE_TYPE:
-                    textureName = "apple";
-                    this->Collectables.push_back(GameObject(pos, size, ResourceManager::GetTexture(textureName), tileData[y][x]));
+                {
+                    GameObject apple(pos, size, ResourceManager::GetTexture(textureName), tileData[y][x]);
+                    apple.CollisionSize   = glm::vec2(size.x * 0.5f, size.y * 0.5f);
+                    apple.CollisionOffset = glm::vec2(size.x * 0.25f, size.y * 0.25f);
+                    this->Collectables.push_back(apple);
                     continue;
+                }
                 default:
-                    continue;
+                    break;
             }
             this->Tiles.push_back(GameObject(pos, size, ResourceManager::GetTexture(textureName), tileData[y][x]));
         }
