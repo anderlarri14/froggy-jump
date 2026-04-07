@@ -18,7 +18,9 @@ add_library(miniaudio STATIC "external/miniaudio/miniaudio_impl.cpp")
 target_include_directories(miniaudio PUBLIC "external/miniaudio")
 
 # --- Sources ---
-file(GLOB_RECURSE MY_SOURCE_FILES "src/*.cpp")
+file(GLOB_RECURSE MY_SOURCE_FILES
+    "src/*.cpp"
+    "src/*rc")
 file(GLOB_RECURSE MY_HEADER_FILES "src/*.h")
 
 add_executable(${PROJECT_NAME}
