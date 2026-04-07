@@ -8,6 +8,7 @@
 #include "text.h"
 
 #include <iostream>
+#include <string>
 
 SpriteRenderer  *Renderer;
 SoundEngine Sound;
@@ -38,20 +39,22 @@ void Game::Init()
 
     Renderer = new SpriteRenderer(ResourceManager::GetShader("frog"));
 
-    ResourceManager::LoadTexture("data/textures/background.jpg", false, "background");
-    ResourceManager::LoadTexture("data/textures/menu.png", true, "menu");
-    ResourceManager::LoadTexture("data/textures/gameWon.png", true, "gameWon");
-    ResourceManager::LoadTexture("data/textures/gameLost.png", true, "gameLost");
+    ResourceManager::LoadTexture("data/textures/background.png", true, "background");
+    ResourceManager::LoadTexture("data/textures/background_menu.png", true, "menu");
+    ResourceManager::LoadTexture("data/textures/background_gameWon.png", true, "gameWon");
+    ResourceManager::LoadTexture("data/textures/background_gameLost.png", true, "gameLost");
     ResourceManager::LoadTexture("data/textures/froggyjump_tileset.png", true, "froggyjump_tileset");
 
-    GameLevel one, two, three; 
-    one.Load("data/levels/level1.csv", this->Width, this->Height);
-    two.Load("data/levels/level2.csv", this->Width, this->Height);
-    three.Load("data/levels/level3.csv", this->Width, this->Height);
+    const int totalLevels = 8;
 
-    this->Levels.push_back(one);
-    this->Levels.push_back(two);
-    this->Levels.push_back(three);
+    for (int i = 1; i <= totalLevels; i++)
+    {
+        GameLevel level;
+        std::string levelSrc = "data/levels/level" + std::to_string(i) + ".csv";
+        level.Load(levelSrc.c_str(), this->Width, this->Height);
+        this->Levels.push_back(level);
+    }
+    
     this->CurrentLevel = 0;
 
     float volume = 0.5f;
@@ -77,7 +80,6 @@ void Game::Init()
     );
     Player->CollisionSize = this->Levels[this->CurrentLevel].PlayerData.CollisionSize;
     Player->CollisionOffset = this->Levels[this->CurrentLevel].PlayerData.CollisionOffset;
-    std::cout << "PlayerData is: (" << Player->Position.x <<","<< Player->Position.y <<") (" << Player->Size.x <<","<< Player->Size.y <<") "<< Player->Sprite.ID << std::endl;
 
 }
 
@@ -92,6 +94,8 @@ void Game::Update(float dt)
     // Collisions
     this->Collisions(dt);
 
+    Player->UpdateAnimations(dt);
+
     // Check level beaten and load next
     this->LevelCompleted();
 }
@@ -102,14 +106,15 @@ void Game::SimulatePhysics(float dt)
     float friction = 10.0f;
     float drag = 8.0f;
 
-    // 1. Aplicar Gravedad a la velocidad
     Player->Velocity.y += gravity * dt;
-
 
     if (Player->IsOnGround)
         Player->Velocity.x -= Player->Velocity.x * friction * dt;
     else
         Player->Velocity.x -= Player->Velocity.x * drag * dt;
+
+    if (std::abs(Player->Velocity.x) < 15.0f) 
+        Player->Velocity.x = 0.0f;
 
     Player->Position += Player->Velocity * dt;
 
@@ -118,52 +123,47 @@ void Game::SimulatePhysics(float dt)
 
 void Game::Collisions(float dt)
 {
-    // Player collision data
-    glm::vec2 playerCollision = Player->Position + Player->CollisionOffset;
-    glm::vec2 playerHalf   = Player->CollisionSize * 0.5f;
-    glm::vec2 playerCenter = playerCollision + playerHalf;
+    glm::vec2 playerHalf = Player->CollisionSize * 0.5f;
+    // glm::vec2 pSize = Player->CollisionSize;
+    glm::vec2 playerCenter;
 
     // Terrain collisions
     for (GameObject &tile : this->Levels[this->CurrentLevel].Tiles)
     {
         if (checkCollisionAABB(*Player, tile))
         {
-            // Tile collision data
-            glm::vec2 tileCollision = tile.Position + tile.CollisionOffset;
+            playerCenter = this->GetPlayerCenter(); 
             glm::vec2 tileHalf   = tile.CollisionSize * 0.5f;
-            glm::vec2 tileCenter = tileCollision + tileHalf;
+            glm::vec2 tileCenter = (tile.Position + tile.CollisionOffset) + tileHalf;
 
-            float overlapX = (playerHalf.x + tileHalf.x) - std::abs(playerCenter.x - tileCenter.x);
-            float overlapY = (playerHalf.y + tileHalf.y) - std::abs(playerCenter.y - tileCenter.y);
+            glm::vec2 diff = playerCenter - tileCenter;
+            float overlapX = (playerHalf.x + tileHalf.x) - std::abs(diff.x);
+            float overlapY = (playerHalf.y + tileHalf.y) - std::abs(diff.y);
 
             if (overlapX < overlapY)
             {
-                if (playerCenter.x < tileCenter.x)
-                {
-                    Player->Position.x -= overlapX; // Left colision
-                }
-                else
-                {
-                    Player->Position.x += overlapX; // Right colision
-                }
+                Player->Position.x += (diff.x > 0) ? overlapX : -overlapX;
                 Player->Velocity.x = 0;
             }
             else
             {
-                if (playerCenter.y < tileCenter.y)
+                if (diff.y < 0)
                 {
-                    Player->Position.y -= overlapY; // Up colision
+                    // Colisión desde arriba (suelo)
+                    Player->Position.y -= overlapY;
                     Player->IsOnGround = true;
                 }
                 else
                 {
-                    Player->Position.y += overlapY; // Down colision
+                    // Colisión desde abajo (techo)
+                    Player->Position.y += overlapY;
                 }
                 Player->Velocity.y = 0;
             }
-            playerCenter = (Player->Position + Player->CollisionOffset) + (Player->CollisionSize * 0.5f);
         }
     }
+
+    playerCenter = this->GetPlayerCenter();
 
     // Collectable collisions
     for (GameObject &collectable : this->Levels[this->CurrentLevel].Collectables)
@@ -176,39 +176,32 @@ void Game::Collisions(float dt)
     }
 
     // Out of bounds collisions
-    if (Player->Position.x + Player->CollisionOffset.x < 0.0f)
-    {
+    if (playerCenter.x - playerHalf.x < 0.0f) {
+        // Left
         Player->Position.x = -Player->CollisionOffset.x;
         Player->Velocity.x = 0.0f;
     } 
-    else if (Player->Position.x + Player->Size.x > this->Width)
-    {
+    else if (playerCenter.x + playerHalf.x > this->Width) {
+        // Right
         Player->Position.x = this->Width - Player->CollisionOffset.x - Player->CollisionSize.x;
         Player->Velocity.x = 0.0f;
     }
-    
-    if (Player->Position.y + Player->CollisionOffset.y < 0.0f)
-    {
-        Player->Position.y = -Player->CollisionOffset.y;
-        Player->Velocity.y = 0.0f;
-    }
-    
-    if (Player->Position.y + Player->CollisionOffset.y > this->Height)
-    {
-        /* FALL DEATH LOGIC */
-        Player->Death();
-        Sound.StartSound(SFX_FAIL);
 
-        if (Player->Lives <= 0)
-        {
-            this->State = GAME_OVER;
-        }
-        else
-        {
-            Player->Reset(this->Levels[this->CurrentLevel].PlayerData.Position);
-        }  
+    // Bottom
+    if (playerCenter.y + playerHalf.y > this->Height) {
+        HandlePlayerDeath();
     }
-    
+}
+
+glm::vec2 Game::GetPlayerCenter() {
+    return Player->Position + Player->CollisionOffset + (Player->CollisionSize * 0.5f);
+}
+
+void Game::HandlePlayerDeath() {
+    Player->Death();
+    Sound.StartSound(SFX_FAIL);
+    if (Player->Lives <= 0) this->State = GAME_OVER;
+    else Player->Reset(this->Levels[this->CurrentLevel].PlayerData.Position);
 }
 
 void Game::ProcessInput(float dt)
@@ -230,26 +223,20 @@ void Game::ProcessInput(float dt)
             Sound.StartSound(SFX_JUMP);
         }
 
-
-
         // Debug tools
-        if (this->Keys[GLFW_KEY_KP_1])
-        {
-            this->CurrentLevel = 0;
-        }
-        if (this->Keys[GLFW_KEY_KP_2])
-        {
-            this->CurrentLevel = 1;
-        }
-        if (this->Keys[GLFW_KEY_KP_3])
-        {
-            this->CurrentLevel = 2;
-        }
-        if (this->Keys[GLFW_KEY_KP_0])
-        {
-            Player->Position = this->Levels[this->CurrentLevel].PlayerData.Position;
-            Player->Velocity = glm::vec2(0.0f, 0.0f);
-        }
+        // for (int i = 0; i < 8; i++) {
+        //     if (this->Keys[GLFW_KEY_KP_1 + i]) {
+        //         this->CurrentLevel = i;
+        //         Player->Reset(this->Levels[i].PlayerData.Position);
+        //     }
+        // }
+
+        // if (this->Keys[GLFW_KEY_KP_0])
+        // {
+        //     Player->Lives++;
+        //     Player->Position = this->Levels[this->CurrentLevel].PlayerData.Position;
+        //     Player->Velocity = glm::vec2(0.0f, 0.0f);
+        // }
     }
 
     if (this->State == GAME_MENU)
@@ -259,10 +246,28 @@ void Game::ProcessInput(float dt)
             this->State = GAME_ACTIVE;
         }
     }
+
+    if (this->State == GAME_OVER)
+    {
+        if (this->Keys[GLFW_KEY_F])
+        {
+            Player->Lives = 3;
+            Player->Reset(this->Levels[this->CurrentLevel].PlayerData.Position);
+            this->State = GAME_ACTIVE;
+        }
+    }
+
+    if (this->State == GAME_WIN)
+    {
+        if (this->Keys[GLFW_KEY_R])
+        {
+            this->Reset();
+        }
+    }
     
 }
 
-void Game::Render()
+void Game::Render(int fps)
 {
     switch (this->State)
     {
@@ -291,6 +296,9 @@ void Game::Render()
             UIText->Draw(LivesStr.c_str(), textPos, textColor, size);
             LivesStr = "Level: " + std::to_string(this->CurrentLevel + 1);
             textPos =  glm::vec2(5.0f, 40.0f);
+            UIText->Draw(LivesStr.c_str(), textPos, textColor, size);
+            LivesStr = "FPS: " + std::to_string(fps);
+            textPos =  glm::vec2(this->Width - 125.0f, 5.0f);
             UIText->Draw(LivesStr.c_str(), textPos, textColor, size);
             
             break;
@@ -335,4 +343,16 @@ void Game::LevelCompleted()
         }
         
     }
+}
+
+void Game::Reset()
+{
+    for (GameLevel &level : this->Levels)
+    {
+        level.Reset();
+    }
+    Player->Lives = 3;
+    this->CurrentLevel = 0;
+    Player->Reset(this->Levels[this->CurrentLevel].PlayerData.Position);
+    this->State = GAME_ACTIVE;
 }

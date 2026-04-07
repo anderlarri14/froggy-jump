@@ -98,3 +98,11 @@ bool GameLevel::IsCompleted()
     }
     return true;
 }
+
+void GameLevel::Reset()
+{
+    for (GameObject &collectable : this->Collectables)
+    {
+        collectable.IsCollected = false;
+    }
+}

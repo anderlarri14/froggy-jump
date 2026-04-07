@@ -62,14 +62,44 @@ int main(int argc, char *argv[])
 
 
     float deltaTime = 0.0f;
+    float currentFrame = 0.0f;
     float lastFrame = 0.0f;
+    
+    float targetFPS = 60.0;
+    float timePerFrame = 1.0 / targetFPS;
+
+    float lastFpsUpdate = 0.0f;
+    float fpsUpdateInterval = 1.0f;
+    int frameCount = 0;
+    int currentFps = 0;
 
     while (!glfwWindowShouldClose(window))
     {
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
         glfwPollEvents();
+        if (glfwGetWindowAttrib(window, GLFW_ICONIFIED))
+        {
+            lastFrame = glfwGetTime();
+            continue;
+        }
+
+        currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+
+        // FPS limit
+        if (deltaTime < timePerFrame)
+            continue; 
+        
+        lastFrame = currentFrame;
+
+        lastFpsUpdate += deltaTime;
+        frameCount++;
+        if (lastFpsUpdate >= fpsUpdateInterval)
+        {
+            currentFps = (int)((frameCount / lastFpsUpdate) + 0.5f);
+            
+            lastFpsUpdate = 0.0f;
+            frameCount = 0;
+        }
 
         // Manage user input
         // -----------------
@@ -83,7 +113,7 @@ int main(int argc, char *argv[])
         // ------
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-        FroggyJump.Render();
+        FroggyJump.Render(currentFps);
 
         glfwSwapBuffers(window);
     }

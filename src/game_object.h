@@ -9,9 +9,9 @@
 enum GameObjectTypes{
     AIR_TYPE = -1,
     DIRT_TYPE = 0,
-    GRASS_TYPE = 1,
-    FROG_TYPE = 2,
-    APPLE_TYPE = 3
+    GRASS_TYPE = 4,
+    FROG_TYPE = 1,
+    APPLE_TYPE = 8
 };
 
 

@@ -31,8 +31,11 @@ public:
     void Update(float dt);
     void SimulatePhysics(float dt);
     void Collisions(float dt);
-    void Render();
+    void Render(int fps);
     void LevelCompleted();
+    void HandlePlayerDeath();
+    glm::vec2 GetPlayerCenter();
+    void Reset();
 
 };
 #endif
